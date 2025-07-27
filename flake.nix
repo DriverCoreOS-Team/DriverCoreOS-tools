@@ -32,8 +32,8 @@
           rpi = pkgs.mkShell {
             name = "rpi-dev";
             buildInputs = common ++ [
+              pkgs.python313Full
               pythonEnv
-              pkgs.pyqt5
             ];
           };
 
