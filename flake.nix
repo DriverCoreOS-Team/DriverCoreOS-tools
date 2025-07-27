@@ -1,5 +1,5 @@
 {
-  description = "DriverCoreOS Development Flake (Simplified)";
+  description = "DriverCoreOS Development Flake (Python 3.13, ESP32, RPi)";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
@@ -11,35 +11,47 @@
       let
         pkgs = import nixpkgs { inherit system; };
 
-        # Python environment with shared packages
-        pythonEnv = pkgs.python3.withPackages (ps: with ps; [
+        python = pkgs.python313;
+
+        # Base Python 3.13 environment with commonly used libraries
+        pythonCommon = python.withPackages (ps: with ps; [
           pyserial
+          requests
+          numpy
         ]);
 
-        common = with pkgs; [
-          git
+        pythonEnv = python.withPackages (ps: with ps; [
+          pyqt5
+          qtpy
+          qtconsole
+        ]);
+
+        # Shared CLI tools
+        commonPackages = [
+          python
+          pythonCommon
+          pkgs.git
         ];
       in {
         devShells = {
           esp32 = pkgs.mkShell {
             name = "esp32-dev";
-            buildInputs = common ++ [
+            buildInputs = commonPackages ++ [
               pkgs.platformio
-              pythonEnv
             ];
           };
 
           rpi = pkgs.mkShell {
             name = "rpi-dev";
-            buildInputs = common ++ [
-              pkgs.python313Full
+            buildInputs = commonPackages ++ [
               pythonEnv
             ];
           };
 
           default = pkgs.mkShell {
             name = "drivercoreos-dev";
-            buildInputs = common;
+            buildInputs = commonPackages ++ [
+            ];
           };
         };
       }
