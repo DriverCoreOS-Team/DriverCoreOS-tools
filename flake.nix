@@ -1,49 +1,59 @@
 {
-  description = "DriverCoreOS – Multi-environment development setup";
+  description = "DriverCoreOS Development Flake (Python 3.13, ESP32, RPi)";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils, ... }:
+  outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
 
-        # Define shared Python environment
-        pythonDeps = ps: with ps; [ pyqt5 pyserial numpy matplotlib ];
+        python = pkgs.python313;
 
-        pythonEnv = pkgs.python3.withPackages pythonDeps;
+        # Base Python 3.13 environment with commonly used libraries
+        pythonCommon = python.withPackages (ps: with ps; [
+          pyserial
+          requests
+          numpy
+        ]);
 
-        commonDeps = with pkgs; [
-          git
+        pythonEnv = python.withPackages (ps: with ps; [
+          pyqt5
+          qtpy
+          qtconsole
+        ]);
+
+        # Shared CLI tools
+        commonPackages = [
+          python
+          pythonCommon
+          pkgs.git
         ];
-
-        commonEnv = with pkgs; commonDeps;
-
       in {
         devShells = {
-          # For ESP32 firmware development
           esp32 = pkgs.mkShell {
-            name = "esp32-dev-shell";
-            packages = with pkgs; [ commonEnv pythonEnv platformio esptool minicom ];
+            name = "esp32-dev";
+            buildInputs = commonPackages ++ [
+              pkgs.platformio
+            ];
           };
 
-          # For Raspberry Pi software (UI, plugins, etc.)
           rpi = pkgs.mkShell {
-            name = "rpi-dev-shell";
-            packages = with pkgs; [
-              commonEnv
+            name = "rpi-dev";
+            buildInputs = commonPackages ++ [
               pythonEnv
             ];
           };
 
-          # For building and editing documentation
-          docs = pkgs.mkShell {
-            name = "docs-dev-shell";
-            packages = with pkgs; [ commonEnv mdbook mdbook-mermaid ];
+          default = pkgs.mkShell {
+            name = "drivercoreos-dev";
+            buildInputs = commonPackages ++ [
+            ];
           };
         };
-      });
+      }
+    );
 }
